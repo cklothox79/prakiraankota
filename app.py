@@ -32,12 +32,11 @@ def get_coordinates(nama_kota):
 lat = lon = None
 lokasi_sumber = ""
 
-# Tampilkan peta
+# Peta input
 st.markdown("### 🗺️ Klik lokasi di peta atau masukkan nama kota")
 default_location = [-2.5, 117.0]
 m = folium.Map(location=default_location, zoom_start=5)
 
-# Ambil koordinat dari kota (jika diisi)
 if kota:
     lat, lon = get_coordinates(kota)
     if lat and lon:
@@ -73,7 +72,6 @@ with st.container():
         r = requests.get(url)
         return r.json() if r.status_code == 200 else None
 
-    # Ikon dan deskripsi cuaca
     weather_icon = {
         0: ("☀️", "Cerah"),
         1: ("🌤️", "Cerah Berawan"),
@@ -103,7 +101,6 @@ with st.container():
     if lat and lon and tanggal:
         data = get_weather(lat, lon, tanggal)
         if data and "hourly" in data:
-            # Data hourly
             d = data["hourly"]
             waktu = d["time"]
             jam_labels = [w[-5:] for w in waktu]
@@ -116,7 +113,6 @@ with st.container():
             angin_dir = d["winddirection_10m"]
             tekanan = d.get("pressure_msl", [None]*len(waktu))
 
-            # Cuaca sekarang
             cuaca_skrg = data.get("current_weather", {})
             if "time" in cuaca_skrg:
                 try:
@@ -135,84 +131,42 @@ with st.container():
             ikon, deskripsi = weather_icon.get(kode_skrg, ("❓", "Tidak diketahui"))
 
             with col2:
-                # Box: Info Cuaca Sekarang
-                st.markdown("""
+                # Box: Info cuaca sekarang
+                st.markdown(f"""
                     <div style='border:2px solid #444; padding:15px; border-radius:10px; background-color:#f9f9f9;'>
                         <h4>📍 Info Lokasi & Cuaca Sekarang</h4>
-                        <p><b>Lokasi:</b> """ + (kota.title() if kota else f"{lat:.2f}, {lon:.2f}") + """</p>
-                        <p><b>Waktu:</b> """ + waktu_display + """</p>
-                        <p><b>""" + ikon + " " + deskripsi + """</b></p>
-                        <p><b>🌡️ Suhu:</b> """ + str(suhu[idx_now]) + """ °C</p>
-                        <p><b>💧 RH:</b> """ + str(rh[idx_now]) + """ %</p>
-                        <p><b>💨 Angin:</b> """ + str(angin_speed[idx_now]) + f" m/s ({angin_dir[idx_now]}°)</p>""" +
-                        (f"<p><b>📉 Tekanan:</b> {tekanan[idx_now]} hPa</p>" if tekanan[idx_now] is not None else "") +
-                    "</div>", unsafe_allow_html=True
-                )
+                        <p><b>Lokasi:</b> {(kota.title() if kota else f"{lat:.2f}, {lon:.2f}")}</p>
+                        <p><b>Waktu:</b> {waktu_display}</p>
+                        <p><b>{ikon} {deskripsi}</b></p>
+                        <p><b>🌡️ Suhu:</b> {suhu[idx_now]} °C</p>
+                        <p><b>💧 RH:</b> {rh[idx_now]} %</p>
+                        <p><b>💨 Angin:</b> {angin_speed[idx_now]} m/s ({angin_dir[idx_now]}°)</p>
+                        {"<p><b>📉 Tekanan:</b> " + str(tekanan[idx_now]) + " hPa</p>" if tekanan[idx_now] is not None else ""}
+                    </div>
+                """, unsafe_allow_html=True)
 
-                # Box: Cuaca Ekstrem
-                ekstrem = [w.replace("T", " ") for i, w in enumerate(waktu) if kode[i] >= 80]
-                if ekstrem:
-                    daftar = "<br>".join(f"• {e}" for e in ekstrem)
-                    st.markdown(f"""
-                        <div style='border:2px solid red; padding:15px; border-radius:10px; background-color:#ffe6e6; margin-top:10px;'>
-                            <b>🚨 Cuaca ekstrem diperkirakan:</b><br>{daftar}
-                        </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.success("✅ Tidak ada cuaca ekstrem terdeteksi.")
+            # Cuaca ekstrem
+            ekstrem = [w.replace("T", " ") for i, w in enumerate(waktu) if kode[i] >= 80]
+            if ekstrem:
+                daftar = "<br>".join(f"• {e}" for e in ekstrem)
+                st.markdown(f"""
+                    <div style='border:2px solid red; padding:15px; border-radius:10px; background-color:#ffe6e6; margin-top:10px;'>
+                        <b>🚨 Cuaca ekstrem diperkirakan:</b><br>{daftar}
+                    </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.success("✅ Tidak ada cuaca ekstrem terdeteksi.")
 
-                # Box: Prakiraan Harian
-                harian = data.get("daily", {})
-                if harian:
-                    idx_hari = 0  # karena hanya ambil 1 hari (tanggal yang dipilih)
-                    tgl = harian["time"][idx_hari]
-                    tmin = harian["temperature_2m_min"][idx_hari]
-                    tmax = harian["temperature_2m_max"][idx_hari]
-                    rain = harian["precipitation_sum"][idx_hari]
-                    kode_harian = harian["weathercode"][idx_hari]
-                    ikon2, deskripsi2 = weather_icon.get(kode_harian, ("❓", "Tidak diketahui"))
+            # Tanggal untuk judul grafik
+            tanggal_str = tanggal.strftime("%d %B %Y")
 
-                    st.markdown(f"""
-                        <div style='border:2px solid #227; padding:15px; border-radius:10px; background-color:#eef1ff; margin-top:10px;'>
-                            <b>📆 Prakiraan Harian {tanggal.strftime('%d %B %Y')}</b><br>
-                            {ikon2} {deskripsi2}<br>
-                            🌡️ <b>Min:</b> {tmin} °C &nbsp;&nbsp; <b>Max:</b> {tmax} °C<br>
-                            🌧️ <b>Hujan:</b> {rain} mm
-                        </div>
-                    """, unsafe_allow_html=True)
-
-            # Tampilkan grafik
-            df = pd.DataFrame({
-                "Waktu": waktu,
-                "Suhu (°C)": suhu,
-                "Hujan (mm)": hujan,
-                "Awan (%)": awan,
-                "RH (%)": rh,
-                "Kecepatan Angin (m/s)": angin_speed,
-                "Arah Angin (°)": angin_dir,
-                "Tekanan (hPa)": tekanan,
-                "Kode Cuaca": kode
-            })
-
+            # Grafik suhu, hujan, awan
             st.subheader("📈 Grafik Suhu, Hujan & Awan")
+            st.caption(f"Prakiraan untuk {tanggal_str}")
             fig = go.Figure()
             fig.add_trace(go.Scatter(x=jam_labels, y=suhu, name="Suhu (°C)", line=dict(color="red")))
-            fig.add_trace(go.Bar(
-                x=jam_labels,
-                y=hujan,
-                name="Hujan (mm)",
-                yaxis="y2",
-                marker_color="darkblue",
-                opacity=0.6
-            ))
-            fig.add_trace(go.Bar(
-                x=jam_labels,
-                y=awan,
-                name="Awan (%)",
-                yaxis="y2",
-                marker_color="gray",
-                opacity=0.4
-            ))
+            fig.add_trace(go.Bar(x=jam_labels, y=hujan, name="Hujan (mm)", yaxis="y2", marker_color="darkblue", opacity=0.6))
+            fig.add_trace(go.Bar(x=jam_labels, y=awan, name="Awan (%)", yaxis="y2", marker_color="gray", opacity=0.4))
             fig.update_layout(
                 xaxis=dict(title="Jam"),
                 yaxis=dict(title="Suhu (°C)"),
@@ -225,7 +179,9 @@ with st.container():
             )
             st.plotly_chart(fig, use_container_width=True)
 
+            # Grafik angin
             st.subheader("🧭 Arah & Kecepatan Angin")
+            st.caption(f"Prakiraan untuk {tanggal_str}")
             fig_angin = go.Figure()
             fig_angin.add_trace(go.Barpolar(
                 r=angin_speed,
@@ -243,7 +199,18 @@ with st.container():
             )
             st.plotly_chart(fig_angin, use_container_width=True)
 
-            # Tabel & unduhan
+            # Tabel
+            df = pd.DataFrame({
+                "Waktu": waktu,
+                "Suhu (°C)": suhu,
+                "Hujan (mm)": hujan,
+                "Awan (%)": awan,
+                "RH (%)": rh,
+                "Kecepatan Angin (m/s)": angin_speed,
+                "Arah Angin (°)": angin_dir,
+                "Tekanan (hPa)": tekanan,
+                "Kode Cuaca": kode
+            })
             st.markdown("### 📊 Tabel Data Cuaca")
             st.dataframe(df, use_container_width=True)
             csv = df.to_csv(index=False).encode("utf-8")
