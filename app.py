@@ -1,4 +1,3 @@
-# ——— [IMPORT] ——— #
 import streamlit as st
 import requests
 import pandas as pd
@@ -7,16 +6,16 @@ from streamlit_folium import st_folium
 import folium
 import plotly.graph_objects as go
 
-# ——— [KONFIGURASI HALAMAN] ——— #
 st.set_page_config(page_title="Cuaca Perjalanan", layout="wide")
 st.title("🕓 Cuaca Perjalanan Per Jam")
 st.markdown("**Editor: Ferri Kusuma (M8TB_14.22.0003)**")
 st.write("Lihat prakiraan suhu, hujan, awan, kelembapan, dan angin setiap jam untuk lokasi dan tanggal yang kamu pilih.")
 
-# ——— [INPUT] ——— #
+# Input
 tanggal = st.date_input("📅 Pilih tanggal perjalanan:", value=date.today(), min_value=date.today())
 kota = st.text_input("📝 Masukkan nama kota (opsional):")
 
+# Fungsi konversi nama kota ke koordinat
 def get_coordinates(nama_kota):
     url = f"https://nominatim.openstreetmap.org/search?q={nama_kota}&format=json&limit=1"
     headers = {"User-Agent": "cuaca-perjalanan-app"}
@@ -29,7 +28,7 @@ def get_coordinates(nama_kota):
 lat = lon = None
 lokasi_sumber = ""
 
-# ——— [PETA] ——— #
+# Peta
 st.markdown("### 🗺️ Klik lokasi di peta atau masukkan nama kota")
 default_location = [-2.5, 117.0]
 m = folium.Map(location=default_location, zoom_start=5)
@@ -55,6 +54,7 @@ with st.container():
         lokasi_sumber = "Peta"
         st.success(f"📍 Lokasi dari peta: {lat:.4f}, {lon:.4f}")
 
+    # Ambil data cuaca
     def get_weather(lat, lon, tanggal):
         tgl_str = tanggal.strftime("%Y-%m-%d")
         url = (
@@ -62,20 +62,18 @@ with st.container():
             f"latitude={lat}&longitude={lon}"
             f"&hourly=temperature_2m,precipitation,cloudcover,weathercode,"
             f"relativehumidity_2m,windspeed_10m,winddirection_10m,pressure_msl"
-            f"&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode"
             f"&current_weather=true"
             f"&timezone=auto&start_date={tgl_str}&end_date={tgl_str}"
         )
         r = requests.get(url)
         return r.json() if r.status_code == 200 else None
 
+    # Kode ikon cuaca
     weather_icon = {
         0: ("☀️", "Cerah"), 1: ("🌤️", "Cerah Berawan"), 2: ("⛅", "Sebagian Berawan"),
         3: ("☁️", "Berawan"), 45: ("🌫️", "Berkabut"), 48: ("🌫️", "Kabut Tebal"),
         51: ("🌦️", "Gerimis Ringan"), 53: ("🌦️", "Gerimis"), 55: ("🌧️", "Gerimis Lebat"),
         61: ("🌦️", "Hujan Ringan"), 63: ("🌧️", "Hujan Sedang"), 65: ("🌧️", "Hujan Lebat"),
-        66: ("🌧️", "Hujan Beku Ringan"), 67: ("🌧️", "Hujan Beku Lebat"),
-        71: ("🌨️", "Salju Ringan"), 73: ("🌨️", "Salju Sedang"), 75: ("🌨️", "Salju Lebat"),
         80: ("🌧️", "Hujan Singkat"), 81: ("🌧️", "Hujan Singkat Sedang"), 82: ("🌧️", "Hujan Singkat Lebat"),
         95: ("⛈️", "Badai Petir"), 96: ("⛈️", "Petir + Es"), 99: ("⛈️", "Badai Parah")
     }
@@ -93,39 +91,32 @@ with st.container():
             rh = d["relativehumidity_2m"]
             angin_speed = d["windspeed_10m"]
             angin_dir = d["winddirection_10m"]
-            tekanan = d.get("pressure_msl", [None]*len(waktu))
+            tekanan = d["pressure_msl"]
 
-            cuaca_skrg = data.get("current_weather", {})
-            if "time" in cuaca_skrg:
-                try:
-                    dt = datetime.fromisoformat(cuaca_skrg["time"])
-                    jam_sekarang = dt.strftime("%H:00")
-                    waktu_display = dt.strftime("%d %B %Y, %H:%M")
-                    idx_now = jam_labels.index(jam_sekarang) if jam_sekarang in jam_labels else 0
-                except:
-                    waktu_display = "-"
-                    idx_now = 0
-            else:
-                waktu_display = "-"
-                idx_now = 0
+            # Cari indeks jam 12:00 untuk ringkasan harian
+            try:
+                idx_12 = jam_labels.index("12:00")
+            except:
+                idx_12 = 0
 
-            kode_skrg = kode[idx_now] if idx_now < len(kode) else 0
-            ikon, deskripsi = weather_icon.get(kode_skrg, ("❓", "Tidak diketahui"))
+            ikon, deskripsi = weather_icon.get(kode[idx_12], ("❓", "Tidak diketahui"))
+            lokasi_tampil = kota.title() if kota else f"{lat:.2f}, {lon:.2f}"
+            tanggal_str = tanggal.strftime("%d %B %Y")
 
             with col2:
                 st.markdown(f"""
-                    <div style='border:2px solid #444; padding:15px; border-radius:10px; background-color:#f9f9f9;'>
-                        <h4>📍 Info Lokasi & Cuaca Sekarang</h4>
-                        <p><b>Lokasi:</b> {(kota.title() if kota else f"{lat:.2f}, {lon:.2f}")}</p>
-                        <p><b>Waktu:</b> {waktu_display}</p>
-                        <p><b>{ikon} {deskripsi}</b></p>
-                        <p><b>🌡️ Suhu:</b> {suhu[idx_now]} °C</p>
-                        <p><b>💧 RH:</b> {rh[idx_now]} %</p>
-                        <p><b>💨 Angin:</b> {angin_speed[idx_now]} m/s ({angin_dir[idx_now]}°)</p>
-                        {"<p><b>📉 Tekanan:</b> " + str(tekanan[idx_now]) + " hPa</p>" if tekanan[idx_now] else ""}
-                    </div>
+                <div style='border:2px solid #666; border-radius:10px; padding:15px; background-color:#eef2f7;'>
+                    <h4>📆 Cuaca untuk {tanggal_str}</h4>
+                    <p><b>Lokasi:</b> {lokasi_tampil}</p>
+                    <p><b>{ikon} {deskripsi}</b></p>
+                    <p><b>🌡️ Suhu:</b> {suhu[idx_12]} °C</p>
+                    <p><b>💧 Kelembapan:</b> {rh[idx_12]} %</p>
+                    <p><b>💨 Angin:</b> {angin_speed[idx_12]} m/s ({angin_dir[idx_12]}°)</p>
+                    <p><b>📉 Tekanan:</b> {tekanan[idx_12]} hPa</p>
+                </div>
                 """, unsafe_allow_html=True)
 
+            # Cuaca ekstrem
             ekstrem = [w.replace("T", " ") for i, w in enumerate(waktu) if kode[i] >= 80]
             if ekstrem:
                 daftar = "<br>".join(f"• {e}" for e in ekstrem)
@@ -137,8 +128,7 @@ with st.container():
             else:
                 st.success("✅ Tidak ada cuaca ekstrem terdeteksi.")
 
-            tanggal_str = tanggal.strftime("%d %B %Y")
-
+            # GRAFIK
             st.subheader("📈 Grafik Suhu, Hujan & Awan")
             st.caption(f"Prakiraan untuk {tanggal_str}")
             fig = go.Figure()
@@ -156,19 +146,31 @@ with st.container():
             st.subheader("🧭 Arah & Kecepatan Angin")
             st.caption(f"Prakiraan untuk {tanggal_str}")
             fig_angin = go.Figure()
-            fig_angin.add_trace(go.Barpolar(r=angin_speed, theta=angin_dir, width=[10]*len(angin_speed), marker_color="royalblue", opacity=0.7))
+            fig_angin.add_trace(go.Barpolar(
+                r=angin_speed,
+                theta=angin_dir,
+                width=[10]*len(angin_speed),
+                marker_color="royalblue",
+                opacity=0.7
+            ))
             fig_angin.update_layout(
                 polar=dict(angularaxis=dict(direction="clockwise", rotation=90), radialaxis=dict(title="m/s")),
                 height=450
             )
             st.plotly_chart(fig_angin, use_container_width=True)
 
+            # Tabel dan unduhan
             df = pd.DataFrame({
-                "Waktu": waktu, "Suhu (°C)": suhu, "Hujan (mm)": hujan, "Awan (%)": awan,
-                "RH (%)": rh, "Kecepatan Angin (m/s)": angin_speed, "Arah Angin (°)": angin_dir,
-                "Tekanan (hPa)": tekanan, "Kode Cuaca": kode
+                "Waktu": waktu,
+                "Suhu (°C)": suhu,
+                "Hujan (mm)": hujan,
+                "Awan (%)": awan,
+                "RH (%)": rh,
+                "Kecepatan Angin (m/s)": angin_speed,
+                "Arah Angin (°)": angin_dir,
+                "Tekanan (hPa)": tekanan,
+                "Kode Cuaca": kode
             })
-
             st.markdown("### 📊 Tabel Data Cuaca")
             st.caption(f"Prakiraan untuk {tanggal_str}")
             st.dataframe(df, use_container_width=True)
