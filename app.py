@@ -119,10 +119,13 @@ with st.container():
                 try:
                     dt = datetime.fromisoformat(cuaca_skrg["time"])
                     jam_sekarang = dt.strftime("%H:00")
+                    waktu_display = dt.strftime("%d %B %Y, %H:%M")
                     idx_now = jam_labels.index(jam_sekarang) if jam_sekarang in jam_labels else 0
                 except:
+                    waktu_display = "-"
                     idx_now = 0
             else:
+                waktu_display = "-"
                 idx_now = 0
 
             kode_skrg = kode[idx_now] if idx_now < len(kode) else 0
@@ -131,6 +134,7 @@ with st.container():
             with col2:
                 st.markdown("### ⚠️ Info Lokasi & Cuaca Sekarang")
                 st.markdown(f"**📍 Lokasi:** `{kota.title() if kota else f'{lat:.2f}, {lon:.2f}'}`")
+                st.markdown(f"**🕒 Waktu:** {waktu_display}")
                 st.markdown(f"**{ikon} {deskripsi}**")
                 st.markdown(f"**🌡️ Suhu:** {suhu[idx_now]} °C")
                 st.markdown(f"**💧 RH:** {rh[idx_now]} %")
