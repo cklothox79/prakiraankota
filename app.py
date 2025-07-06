@@ -110,6 +110,7 @@ with st.container():
                 </div>
                 """, unsafe_allow_html=True)
 
+            # Cuaca ekstrem
             ekstrem = [w.replace("T", " ") for i, w in enumerate(waktu) if kode[i] >= 80]
             if ekstrem:
                 daftar = "<br>".join(f"• {e}" for e in ekstrem)
@@ -120,6 +121,18 @@ with st.container():
                 """, unsafe_allow_html=True)
             else:
                 st.success("✅ Tidak ada cuaca ekstrem terdeteksi.")
+
+            # Prakiraan Hujan
+            hujan_info = [f"• {w[-5:]} — {h:.1f} mm" for w, h in zip(waktu, hujan) if h > 0]
+            if hujan_info:
+                daftar_hujan = "<br>".join(hujan_info)
+                st.markdown(f"""
+                    <div style='border:2px solid #0077b6; padding:15px; border-radius:10px; background-color:#e0f2ff; margin-top:10px;'>
+                        <b>🌧️ Prakiraan Hujan (waktu lokal):</b><br>{daftar_hujan}
+                    </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.info("🌤️ Tidak ada hujan yang diperkirakan.")
 
             # GRAFIK SUHU-HUJAN-AWAN
             st.subheader("📈 Grafik Suhu, Hujan & Awan")
