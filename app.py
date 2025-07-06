@@ -134,21 +134,29 @@ with st.container():
             ikon, deskripsi = weather_icon.get(kode_skrg, ("❓", "Tidak diketahui"))
 
             with col2:
-                st.markdown("### ⚠️ Info Lokasi & Cuaca Sekarang")
-                st.markdown(f"**📍 Lokasi:** `{kota.title() if kota else f'{lat:.2f}, {lon:.2f}'}`")
-                st.markdown(f"**🕒 Waktu:** {waktu_display}")
-                st.markdown(f"**{ikon} {deskripsi}**")
-                st.markdown(f"**🌡️ Suhu:** {suhu[idx_now]} °C")
-                st.markdown(f"**💧 RH:** {rh[idx_now]} %")
-                st.markdown(f"**💨 Angin:** {angin_speed[idx_now]} m/s ({angin_dir[idx_now]}°)")
-                if tekanan[idx_now] is not None:
-                    st.markdown(f"**📉 Tekanan Udara:** {tekanan[idx_now]} hPa")
+                with st.container():
+                    st.markdown("""
+                        <div style='border:2px solid #444; padding:15px; border-radius:10px; background-color:#f9f9f9;'>
+                            <h4>⚠️ Info Lokasi & Cuaca Sekarang</h4>
+                            <p><b>📍 Lokasi:</b> """ + (kota.title() if kota else f"{lat:.2f}, {lon:.2f}") + """</p>
+                            <p><b>🕒 Waktu:</b> """ + waktu_display + """</p>
+                            <p><b>""" + ikon + " " + deskripsi + """</b></p>
+                            <p><b>🌡️ Suhu:</b> """ + str(suhu[idx_now]) + """ °C</p>
+                            <p><b>💧 RH:</b> """ + str(rh[idx_now]) + """ %</p>
+                            <p><b>💨 Angin:</b> """ + str(angin_speed[idx_now]) + f" m/s ({angin_dir[idx_now]}°)</p>""" +
+                            (f"<p><b>📉 Tekanan:</b> {tekanan[idx_now]} hPa</p>" if tekanan[idx_now] is not None else "") +
+                        "</div>", unsafe_allow_html=True
+                    )
 
                 # Deteksi cuaca ekstrem
                 ekstrem = [w.replace("T", " ") for i, w in enumerate(waktu) if kode[i] >= 80]
                 if ekstrem:
-                    daftar = "\n".join(f"• {e}" for e in ekstrem)
-                    st.warning(f"🚨 Cuaca ekstrem diperkirakan:\n\n{daftar}")
+                    daftar = "<br>".join(f"• {e}" for e in ekstrem)
+                    st.markdown(f"""
+                        <div style='border:2px solid red; padding:15px; border-radius:10px; background-color:#ffe6e6; margin-top:10px;'>
+                            <b>🚨 Cuaca ekstrem diperkirakan pada:</b><br>{daftar}
+                        </div>
+                    """, unsafe_allow_html=True)
                 else:
                     st.success("✅ Tidak ada cuaca ekstrem terdeteksi.")
 
