@@ -54,10 +54,10 @@ with st.container():
     def get_weather(lat, lon, tanggal):
         tgl_str = tanggal.strftime("%Y-%m-%d")
         url = (
-            f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}"
+            f"https://api.open-meteo.com/v1/forecast?"
+            f"latitude={lat}&longitude={lon}"
             f"&hourly=temperature_2m,precipitation,cloudcover,weathercode,"
-            f"relativehumidity_2m,windspeed_10m,winddirection_10m,pressure_msl,"
-            f"shortwave_radiation"
+            f"relativehumidity_2m,windspeed_10m,winddirection_10m,pressure_msl"
             f"&current_weather=true"
             f"&timezone=auto&start_date={tgl_str}&end_date={tgl_str}"
         )
@@ -87,7 +87,6 @@ with st.container():
             angin_speed = d["windspeed_10m"]
             angin_dir = d["winddirection_10m"]
             tekanan = d["pressure_msl"]
-            radiasi = d.get("shortwave_radiation", [0] * len(waktu))
 
             try:
                 idx_12 = jam_labels.index("12:00")
@@ -151,7 +150,7 @@ with st.container():
 
             # Grafik Suhu, Hujan, Awan
             st.subheader("📈 Grafik Suhu, Hujan & Awan")
-            st.caption(f"Prakiraan untuk {tanggal_str} — Lokasi: {lokasi_tampil}")
+            st.caption(f"Prakiraan untuk {tanggal_str} (waktu lokal) — Lokasi: {lokasi_tampil}")
             fig = go.Figure()
             fig.add_trace(go.Scatter(x=jam_labels, y=suhu, name="Suhu (°C)", line=dict(color="red")))
             fig.add_trace(go.Bar(x=jam_labels, y=hujan, name="Hujan (mm)", yaxis="y2", marker_color="darkblue", opacity=0.6))
@@ -166,6 +165,7 @@ with st.container():
 
             # Grafik Angin
             st.subheader("🧭 Arah & Kecepatan Angin")
+            st.caption(f"Prakiraan untuk {tanggal_str} (waktu lokal) — Lokasi: {lokasi_tampil}")
             fig_angin = go.Figure()
             fig_angin.add_trace(go.Barpolar(
                 r=angin_speed,
@@ -180,22 +180,6 @@ with st.container():
             )
             st.plotly_chart(fig_angin, use_container_width=True)
 
-            # Lama Penyinaran jika radiasi > 200 dan hujan > 0
-            penyinaran_matahari = [
-                (w[-5:], r, h) for w, r, h in zip(waktu, radiasi, hujan) if r > 200 and h > 0
-            ]
-            if penyinaran_matahari:
-                jam_p = [j for j, _, _ in penyinaran_matahari]
-                mulai, akhir = jam_p[0], jam_p[-1]
-                total_jam = len(jam_p)
-                st.markdown(f"""
-                    <div style='border:2px solid orange; padding:15px; border-radius:10px; background-color:#fff6e6; margin-top:10px;'>
-                        <b>🌞 Lama Penyinaran Matahari saat Hujan:</b><br>
-                        • Durasi: {total_jam} jam (dari {mulai} hingga {akhir})<br>
-                        • Syarat: radiasi > 200 W/m² dan hujan > 0 mm
-                    </div>
-                """, unsafe_allow_html=True)
-
             # Tabel Data
             df = pd.DataFrame({
                 "Waktu": waktu,
@@ -206,11 +190,10 @@ with st.container():
                 "Kecepatan Angin (m/s)": angin_speed,
                 "Arah Angin (°)": angin_dir,
                 "Tekanan (hPa)": tekanan,
-                "Radiasi (W/m²)": radiasi,
                 "Kode Cuaca": kode
             })
             st.markdown("### 📊 Tabel Data Cuaca")
-            st.caption(f"Prakiraan untuk {tanggal_str} — Lokasi: {lokasi_tampil}")
+            st.caption(f"Prakiraan untuk {tanggal_str} (waktu lokal) — Lokasi: {lokasi_tampil}")
             st.dataframe(df, use_container_width=True)
             csv = df.to_csv(index=False).encode("utf-8")
             st.download_button("📥 Unduh Data (CSV)", data=csv, file_name="cuaca_per_jam.csv", mime="text/csv")
