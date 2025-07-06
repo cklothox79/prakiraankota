@@ -59,16 +59,16 @@ with st.container():
         lokasi_sumber = "Peta"
         st.success(f"📍 Lokasi dari peta: {lat:.4f}, {lon:.4f}")
 
-    # Fungsi ambil data cuaca
-    def get_hourly_weather(lat, lon, tanggal):
-        tgl = tanggal.strftime("%Y-%m-%d")
+    def get_weather(lat, lon, tanggal):
+        tgl_str = tanggal.strftime("%Y-%m-%d")
         url = (
             f"https://api.open-meteo.com/v1/forecast?"
             f"latitude={lat}&longitude={lon}"
             f"&hourly=temperature_2m,precipitation,cloudcover,weathercode,"
             f"relativehumidity_2m,windspeed_10m,winddirection_10m,pressure_msl"
+            f"&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode"
             f"&current_weather=true"
-            f"&timezone=auto&start_date={tgl}&end_date={tgl}"
+            f"&timezone=auto&start_date={tgl_str}&end_date={tgl_str}"
         )
         r = requests.get(url)
         return r.json() if r.status_code == 200 else None
@@ -101,8 +101,9 @@ with st.container():
     }
 
     if lat and lon and tanggal:
-        data = get_hourly_weather(lat, lon, tanggal)
+        data = get_weather(lat, lon, tanggal)
         if data and "hourly" in data:
+            # Data hourly
             d = data["hourly"]
             waktu = d["time"]
             jam_labels = [w[-5:] for w in waktu]
@@ -134,33 +135,53 @@ with st.container():
             ikon, deskripsi = weather_icon.get(kode_skrg, ("❓", "Tidak diketahui"))
 
             with col2:
-                with st.container():
-                    st.markdown("""
-                        <div style='border:2px solid #444; padding:15px; border-radius:10px; background-color:#f9f9f9;'>
-                            <h4>⚠️ Info Lokasi & Cuaca Sekarang</h4>
-                            <p><b>📍 Lokasi:</b> """ + (kota.title() if kota else f"{lat:.2f}, {lon:.2f}") + """</p>
-                            <p><b>🕒 Waktu:</b> """ + waktu_display + """</p>
-                            <p><b>""" + ikon + " " + deskripsi + """</b></p>
-                            <p><b>🌡️ Suhu:</b> """ + str(suhu[idx_now]) + """ °C</p>
-                            <p><b>💧 RH:</b> """ + str(rh[idx_now]) + """ %</p>
-                            <p><b>💨 Angin:</b> """ + str(angin_speed[idx_now]) + f" m/s ({angin_dir[idx_now]}°)</p>""" +
-                            (f"<p><b>📉 Tekanan:</b> {tekanan[idx_now]} hPa</p>" if tekanan[idx_now] is not None else "") +
-                        "</div>", unsafe_allow_html=True
-                    )
+                # Box: Info Cuaca Sekarang
+                st.markdown("""
+                    <div style='border:2px solid #444; padding:15px; border-radius:10px; background-color:#f9f9f9;'>
+                        <h4>📍 Info Lokasi & Cuaca Sekarang</h4>
+                        <p><b>Lokasi:</b> """ + (kota.title() if kota else f"{lat:.2f}, {lon:.2f}") + """</p>
+                        <p><b>Waktu:</b> """ + waktu_display + """</p>
+                        <p><b>""" + ikon + " " + deskripsi + """</b></p>
+                        <p><b>🌡️ Suhu:</b> """ + str(suhu[idx_now]) + """ °C</p>
+                        <p><b>💧 RH:</b> """ + str(rh[idx_now]) + """ %</p>
+                        <p><b>💨 Angin:</b> """ + str(angin_speed[idx_now]) + f" m/s ({angin_dir[idx_now]}°)</p>""" +
+                        (f"<p><b>📉 Tekanan:</b> {tekanan[idx_now]} hPa</p>" if tekanan[idx_now] is not None else "") +
+                    "</div>", unsafe_allow_html=True
+                )
 
-                # Deteksi cuaca ekstrem
+                # Box: Cuaca Ekstrem
                 ekstrem = [w.replace("T", " ") for i, w in enumerate(waktu) if kode[i] >= 80]
                 if ekstrem:
                     daftar = "<br>".join(f"• {e}" for e in ekstrem)
                     st.markdown(f"""
                         <div style='border:2px solid red; padding:15px; border-radius:10px; background-color:#ffe6e6; margin-top:10px;'>
-                            <b>🚨 Cuaca ekstrem diperkirakan pada:</b><br>{daftar}
+                            <b>🚨 Cuaca ekstrem diperkirakan:</b><br>{daftar}
                         </div>
                     """, unsafe_allow_html=True)
                 else:
                     st.success("✅ Tidak ada cuaca ekstrem terdeteksi.")
 
-            # DataFrame dan grafik
+                # Box: Prakiraan Harian
+                harian = data.get("daily", {})
+                if harian:
+                    idx_hari = 0  # karena hanya ambil 1 hari (tanggal yang dipilih)
+                    tgl = harian["time"][idx_hari]
+                    tmin = harian["temperature_2m_min"][idx_hari]
+                    tmax = harian["temperature_2m_max"][idx_hari]
+                    rain = harian["precipitation_sum"][idx_hari]
+                    kode_harian = harian["weathercode"][idx_hari]
+                    ikon2, deskripsi2 = weather_icon.get(kode_harian, ("❓", "Tidak diketahui"))
+
+                    st.markdown(f"""
+                        <div style='border:2px solid #227; padding:15px; border-radius:10px; background-color:#eef1ff; margin-top:10px;'>
+                            <b>📆 Prakiraan Harian {tanggal.strftime('%d %B %Y')}</b><br>
+                            {ikon2} {deskripsi2}<br>
+                            🌡️ <b>Min:</b> {tmin} °C &nbsp;&nbsp; <b>Max:</b> {tmax} °C<br>
+                            🌧️ <b>Hujan:</b> {rain} mm
+                        </div>
+                    """, unsafe_allow_html=True)
+
+            # Tampilkan grafik
             df = pd.DataFrame({
                 "Waktu": waktu,
                 "Suhu (°C)": suhu,
