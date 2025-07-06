@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 st.set_page_config(page_title="CUACA PERJALANAN", layout="wide")
 st.title("\U0001F553 CUACA PERJALANAN")
 st.markdown("**Editor: Ferri Kusuma (STMKG/M8TB_14.22.0003_2025)**")
-st.write("Lihat prakiraan suhu, hujan, awan, kelembapan, dan angin setiap jam untuk lokasi dan tanggal yang kamu pilih.")
+st.write("Lihat prakiraan suhu, hujan, awan, kelembapan, angin, dan radiasi setiap jam untuk lokasi dan tanggal yang kamu pilih.")
 
 tanggal = st.date_input("\U0001F4C5 Pilih tanggal perjalanan:", value=date.today(), min_value=date.today())
 kota = st.text_input("\U0001F4DD Masukkan nama kota (opsional):")
@@ -57,8 +57,7 @@ with st.container():
             f"https://api.open-meteo.com/v1/forecast?"
             f"latitude={lat}&longitude={lon}"
             f"&hourly=temperature_2m,precipitation,cloudcover,weathercode,"
-            f"relativehumidity_2m,windspeed_10m,winddirection_10m,pressure_msl,"
-            f"shortwave_radiation"
+            f"relativehumidity_2m,windspeed_10m,winddirection_10m,pressure_msl,shortwave_radiation"
             f"&current_weather=true"
             f"&timezone=auto&start_date={tgl_str}&end_date={tgl_str}"
         )
@@ -95,28 +94,24 @@ with st.container():
             except:
                 idx_12 = 0
 
-            ikon, deskripsi = weather_icon.get(kode[idx_12], ("\u2753", "Tidak diketahui"))
+            ikon, deskripsi = weather_icon.get(kode[idx_12], ("❓", "Tidak diketahui"))
             lokasi_tampil = kota.title() if kota else f"{lat:.2f}, {lon:.2f}"
             tanggal_str = tanggal.strftime("%d %B %Y")
-
-            avg_radiasi = sum(radiasi) / len(radiasi)
+            rata_radiasi = sum(radiasi) / len(radiasi)
 
             with col2:
                 st.markdown(f"""
                 <div style='border:2px solid #666; border-radius:10px; padding:15px; background-color:#eef2f7;'>
-                    <h4>\U0001F4C6 Cuaca untuk {tanggal_str} <span style="font-size:12px;">(waktu lokal)</span></h4>
+                    <h4>📆 Cuaca untuk {tanggal_str} <span style="font-size:12px;">(waktu lokal)</span></h4>
                     <p><b>Lokasi:</b> {lokasi_tampil}</p>
                     <p><b>{ikon} {deskripsi}</b></p>
-                    <p><b>\U0001F321️ Suhu:</b> {suhu[idx_12]} °C</p>
-                    <p><b>\U0001F4A7 Kelembapan:</b> {rh[idx_12]} %</p>
-                    <p><b>\U0001F4A8 Angin:</b> {angin_speed[idx_12]} m/s ({angin_dir[idx_12]}°)</p>
-                    <p><b>\U0001F4C9 Tekanan:</b> {tekanan[idx_12]} hPa</p>
-                    <p><b>\U0001F506 Radiasi Surya:</b> {avg_radiasi:.1f} W/m² (rata-rata)</p>
+                    <p><b>🌡️ Suhu:</b> {suhu[idx_12]} °C</p>
+                    <p><b>💧 Kelembapan:</b> {rh[idx_12]} %</p>
+                    <p><b>💨 Angin:</b> {angin_speed[idx_12]} m/s ({angin_dir[idx_12]}°)</p>
+                    <p><b>📉 Tekanan:</b> {tekanan[idx_12]} hPa</p>
+                    <p><b>☀️ Rata-rata Radiasi:</b> {rata_radiasi:.1f} W/m²</p>
                 </div>
                 """, unsafe_allow_html=True)
-
-            # Tambahan lainnya tetap sama seperti sebelumnya (cuaca ekstrem, grafik, tabel, dll)
-            # ... (potong untuk ringkas)
 
         else:
             st.error("❌ Data cuaca tidak tersedia.")
