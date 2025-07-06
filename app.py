@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 st.set_page_config(page_title="CUACA PERJALANAN", layout="wide")
 st.title("🕓 CUACA PERJALANAN")
 st.markdown("**Editor: Ferri Kusuma (STMKG/M8TB_14.22.0003_2025)**")
-st.write("Lihat prakiraan suhu, hujan, awan, kelembapan, angin, dan penyinaran setiap jam.")
+st.write("Lihat prakiraan suhu, hujan, awan, kelembapan, dan angin setiap jam untuk lokasi dan tanggal yang kamu pilih.")
 
 tanggal = st.date_input("📅 Pilih tanggal perjalanan:", value=date.today(), min_value=date.today())
 kota = st.text_input("📝 Masukkan nama kota (opsional):")
@@ -57,8 +57,7 @@ with st.container():
             f"https://api.open-meteo.com/v1/forecast?"
             f"latitude={lat}&longitude={lon}"
             f"&hourly=temperature_2m,precipitation,cloudcover,weathercode,"
-            f"relativehumidity_2m,windspeed_10m,winddirection_10m,pressure_msl,"
-            f"shortwave_radiation,sunshine_duration"
+            f"relativehumidity_2m,windspeed_10m,winddirection_10m,pressure_msl"
             f"&current_weather=true"
             f"&timezone=auto&start_date={tgl_str}&end_date={tgl_str}"
         )
@@ -88,11 +87,6 @@ with st.container():
             angin_speed = d["windspeed_10m"]
             angin_dir = d["winddirection_10m"]
             tekanan = d["pressure_msl"]
-            radiasi = d["shortwave_radiation"]
-            penyinaran = d["sunshine_duration"]
-
-            avg_radiasi = sum(radiasi) / len(radiasi)
-            durasi_sinar_jam = sum(penyinaran) / 3600
 
             try:
                 idx_12 = jam_labels.index("12:00")
@@ -113,13 +107,80 @@ with st.container():
                     <p><b>💧 Kelembapan:</b> {rh[idx_12]} %</p>
                     <p><b>💨 Angin:</b> {angin_speed[idx_12]} m/s ({angin_dir[idx_12]}°)</p>
                     <p><b>📉 Tekanan:</b> {tekanan[idx_12]} hPa</p>
-                    <hr style="margin:10px 0;">
-                    <p><b>☀️ Durasi Penyinaran:</b> {durasi_sinar_jam:.2f} jam</p>
-                    <p><b>🔆 Radiasi Matahari:</b> {avg_radiasi:.1f} W/m² (rata-rata)</p>
                 </div>
                 """, unsafe_allow_html=True)
 
-            # DataFrame + tampil
+            # Cuaca ekstrem
+            ekstrem = [w.replace("T", " ") for i, w in enumerate(waktu) if kode[i] >= 80]
+            if ekstrem:
+                daftar = "<br>".join(f"• {e}" for e in ekstrem)
+                st.markdown(f"""
+                    <div style='border:2px solid red; padding:15px; border-radius:10px; background-color:#ffe6e6; margin-top:10px;'>
+                        <b>🚨 Cuaca ekstrem diperkirakan (waktu lokal):</b><br>{daftar}
+                    </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.success("✅ Tidak ada cuaca ekstrem terdeteksi.")
+
+            # Prakiraan Hujan + Kategori
+            def intensitas_hujan(mm):
+                if 0.1 <= mm <= 2.5:
+                    return "Ringan"
+                elif 2.6 <= mm <= 7.5:
+                    return "Sedang"
+                elif mm > 7.5:
+                    return "Lebat"
+                return ""
+
+            hujan_info = [
+                f"• {w[-5:]} — {h:.1f} mm ({intensitas_hujan(h)})"
+                for w, h in zip(waktu, hujan)
+                if h > 0
+            ]
+
+            if hujan_info:
+                daftar_hujan = "<br>".join(hujan_info)
+                st.markdown(f"""
+                    <div style='border:2px solid #0077b6; padding:15px; border-radius:10px; background-color:#e0f2ff; margin-top:10px;'>
+                        <b>🌧️ Prakiraan Hujan (waktu lokal):</b><br>{daftar_hujan}
+                    </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.info("🌤️ Tidak ada hujan yang diperkirakan.")
+
+            # Grafik Suhu, Hujan, Awan
+            st.subheader("📈 Grafik Suhu, Hujan & Awan")
+            st.caption(f"Prakiraan untuk {tanggal_str} (waktu lokal) — Lokasi: {lokasi_tampil}")
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=jam_labels, y=suhu, name="Suhu (°C)", line=dict(color="red")))
+            fig.add_trace(go.Bar(x=jam_labels, y=hujan, name="Hujan (mm)", yaxis="y2", marker_color="darkblue", opacity=0.6))
+            fig.add_trace(go.Bar(x=jam_labels, y=awan, name="Awan (%)", yaxis="y2", marker_color="gray", opacity=0.4))
+            fig.update_layout(
+                xaxis=dict(title="Jam"),
+                yaxis=dict(title="Suhu (°C)"),
+                yaxis2=dict(title="Hujan / Awan", overlaying="y", side="right"),
+                height=500
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Grafik Angin
+            st.subheader("🧭 Arah & Kecepatan Angin")
+            st.caption(f"Prakiraan untuk {tanggal_str} (waktu lokal) — Lokasi: {lokasi_tampil}")
+            fig_angin = go.Figure()
+            fig_angin.add_trace(go.Barpolar(
+                r=angin_speed,
+                theta=angin_dir,
+                width=[10]*len(angin_speed),
+                marker_color="royalblue",
+                opacity=0.7
+            ))
+            fig_angin.update_layout(
+                polar=dict(angularaxis=dict(direction="clockwise", rotation=90), radialaxis=dict(title="m/s")),
+                height=450
+            )
+            st.plotly_chart(fig_angin, use_container_width=True)
+
+            # Tabel Data
             df = pd.DataFrame({
                 "Waktu": waktu,
                 "Suhu (°C)": suhu,
@@ -129,8 +190,6 @@ with st.container():
                 "Kecepatan Angin (m/s)": angin_speed,
                 "Arah Angin (°)": angin_dir,
                 "Tekanan (hPa)": tekanan,
-                "Radiasi (W/m²)": radiasi,
-                "Penyinaran (s)": penyinaran,
                 "Kode Cuaca": kode
             })
             st.markdown("### 📊 Tabel Data Cuaca")
