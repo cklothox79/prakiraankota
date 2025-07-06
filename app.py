@@ -158,3 +158,56 @@ with st.container():
                 """, unsafe_allow_html=True)
             else:
                 st.info("🌤️ Tidak ada hujan yang diperkirakan.")
+
+            # Grafik Suhu, Hujan, Awan
+            st.subheader("📈 Grafik Suhu, Hujan & Awan")
+            st.caption(f"Prakiraan untuk {tanggal_str} (waktu lokal) — Lokasi: {lokasi_tampil}")
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=jam_labels, y=suhu, name="Suhu (°C)", line=dict(color="red")))
+            fig.add_trace(go.Bar(x=jam_labels, y=hujan, name="Hujan (mm)", yaxis="y2", marker_color="darkblue", opacity=0.6))
+            fig.add_trace(go.Bar(x=jam_labels, y=awan, name="Awan (%)", yaxis="y2", marker_color="gray", opacity=0.4))
+            fig.update_layout(
+                xaxis=dict(title="Jam"),
+                yaxis=dict(title="Suhu (°C)"),
+                yaxis2=dict(title="Hujan / Awan", overlaying="y", side="right"),
+                height=500
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Grafik Angin
+            st.subheader("🧭 Arah & Kecepatan Angin")
+            st.caption(f"Prakiraan untuk {tanggal_str} (waktu lokal) — Lokasi: {lokasi_tampil}")
+            fig_angin = go.Figure()
+            fig_angin.add_trace(go.Barpolar(
+                r=angin_speed,
+                theta=angin_dir,
+                width=[10]*len(angin_speed),
+                marker_color="royalblue",
+                opacity=0.7
+            ))
+            fig_angin.update_layout(
+                polar=dict(angularaxis=dict(direction="clockwise", rotation=90), radialaxis=dict(title="m/s")),
+                height=450
+            )
+            st.plotly_chart(fig_angin, use_container_width=True)
+
+            # Tabel Data
+            df = pd.DataFrame({
+                "Waktu": waktu,
+                "Suhu (°C)": suhu,
+                "Hujan (mm)": hujan,
+                "Awan (%)": awan,
+                "RH (%)": rh,
+                "Kecepatan Angin (m/s)": angin_speed,
+                "Arah Angin (°)": angin_dir,
+                "Tekanan (hPa)": tekanan,
+                "Kode Cuaca": kode
+            })
+            st.markdown("### 📊 Tabel Data Cuaca")
+            st.caption(f"Prakiraan untuk {tanggal_str} (waktu lokal) — Lokasi: {lokasi_tampil}")
+            st.dataframe(df, use_container_width=True)
+            csv = df.to_csv(index=False).encode("utf-8")
+            st.download_button("📥 Unduh Data (CSV)", data=csv, file_name="cuaca_per_jam.csv", mime="text/csv")
+
+        else:
+            st.error("❌ Data cuaca tidak tersedia.")
