@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 st.set_page_config(page_title="CUACA PERJALANAN", layout="wide")
 st.title("🕓 CUACA PERJALANAN")
 st.markdown("**Editor: Ferri Kusuma (STMKG/M8TB_14.22.0003_2025)**")
-st.write("Lihat prakiraan suhu, hujan, awan, kelembapan, angin, dan penyinaran untuk lokasi dan tanggal yang kamu pilih.")
+st.write("Lihat prakiraan suhu, hujan, awan, kelembapan, angin, dan penyinaran setiap jam untuk lokasi dan tanggal yang kamu pilih.")
 
 tanggal = st.date_input("📅 Pilih tanggal perjalanan:", value=date.today(), min_value=date.today())
 kota = st.text_input("📝 Masukkan nama kota (opsional):")
@@ -57,7 +57,8 @@ with st.container():
             f"https://api.open-meteo.com/v1/forecast?"
             f"latitude={lat}&longitude={lon}"
             f"&hourly=temperature_2m,precipitation,cloudcover,weathercode,"
-            f"relativehumidity_2m,windspeed_10m,winddirection_10m,pressure_msl,shortwave_radiation"
+            f"relativehumidity_2m,windspeed_10m,winddirection_10m,"
+            f"pressure_msl,shortwave_radiation"
             f"&current_weather=true"
             f"&timezone=auto&start_date={tgl_str}&end_date={tgl_str}"
         )
@@ -87,7 +88,7 @@ with st.container():
             angin_speed = d["windspeed_10m"]
             angin_dir = d["winddirection_10m"]
             tekanan = d["pressure_msl"]
-            radiasi = d.get("shortwave_radiation", [0]*len(waktu))
+            radiasi = d["shortwave_radiation"]
 
             try:
                 idx_12 = jam_labels.index("12:00")
@@ -108,6 +109,7 @@ with st.container():
                     <p><b>💧 Kelembapan:</b> {rh[idx_12]} %</p>
                     <p><b>💨 Angin:</b> {angin_speed[idx_12]} m/s ({angin_dir[idx_12]}°)</p>
                     <p><b>📉 Tekanan:</b> {tekanan[idx_12]} hPa</p>
+                    <p><b>☀️ Radiasi:</b> {radiasi[idx_12]} W/m²</p>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -123,7 +125,7 @@ with st.container():
             else:
                 st.success("✅ Tidak ada cuaca ekstrem terdeteksi.")
 
-            # Prakiraan Hujan
+            # Prakiraan Hujan + Kategori
             def intensitas_hujan(mm):
                 if 0.1 <= mm <= 2.5:
                     return "Ringan"
@@ -181,18 +183,19 @@ with st.container():
             )
             st.plotly_chart(fig_angin, use_container_width=True)
 
-            # Penyinaran (hanya jika radiasi > 200 dan hujan)
-            penyinaran = [
-                f"• {w[-5:]} — {rad} W/m² (Hujan: {h} mm)"
-                for w, rad, h in zip(waktu, radiasi, hujan)
-                if rad > 200 and h > 0
-            ]
-            if penyinaran:
-                daftar_penyinaran = "<br>".join(penyinaran)
+            # Penyinaran
+            penyinaran_jam = [w[-5:] for i, w in enumerate(waktu) if radiasi[i] > 200 and hujan[i] > 0]
+            if penyinaran_jam:
+                mulai = penyinaran_jam[0]
+                selesai = penyinaran_jam[-1]
+                durasi = len(penyinaran_jam)
                 st.markdown(f"""
-                    <div style='border:2px solid #ffaa00; padding:15px; border-radius:10px; background-color:#fff3cd; margin-top:10px;'>
-                        <b>☀️ Penyinaran Matahari saat Hujan:</b><br>{daftar_penyinaran}
-                    </div>
+                <div style='border:2px dashed orange; padding:15px; border-radius:10px; background-color:#fff5e6; margin-top:10px;'>
+                    <b>☀️ Penyinaran Matahari Terkait Hujan:</b><br>
+                    Durasi: {durasi} jam<br>
+                    Rentang waktu: {mulai} - {selesai} WIB<br>
+                    (Radiasi > 200 W/m² dan terjadi hujan)
+                </div>
                 """, unsafe_allow_html=True)
 
             # Tabel Data
@@ -205,8 +208,8 @@ with st.container():
                 "Kecepatan Angin (m/s)": angin_speed,
                 "Arah Angin (°)": angin_dir,
                 "Tekanan (hPa)": tekanan,
-                "Kode Cuaca": kode,
-                "Radiasi (W/m²)": radiasi
+                "Radiasi (W/m²)": radiasi,
+                "Kode Cuaca": kode
             })
             st.markdown("### 📊 Tabel Data Cuaca")
             st.caption(f"Prakiraan untuk {tanggal_str} (waktu lokal) — Lokasi: {lokasi_tampil}")
