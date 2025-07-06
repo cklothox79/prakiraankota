@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 import pandas as pd
-from datetime import date, datetime
+from datetime import date
 from streamlit_folium import st_folium
 import folium
 import plotly.graph_objects as go
@@ -122,8 +122,22 @@ with st.container():
             else:
                 st.success("✅ Tidak ada cuaca ekstrem terdeteksi.")
 
-            # Prakiraan Hujan
-            hujan_info = [f"• {w[-5:]} — {h:.1f} mm" for w, h in zip(waktu, hujan) if h > 0]
+            # Prakiraan Hujan + Kategori
+            def intensitas_hujan(mm):
+                if 0.1 <= mm <= 2.5:
+                    return "Ringan"
+                elif 2.6 <= mm <= 7.5:
+                    return "Sedang"
+                elif mm > 7.5:
+                    return "Lebat"
+                return ""
+
+            hujan_info = [
+                f"• {w[-5:]} — {h:.1f} mm ({intensitas_hujan(h)})"
+                for w, h in zip(waktu, hujan)
+                if h > 0
+            ]
+
             if hujan_info:
                 daftar_hujan = "<br>".join(hujan_info)
                 st.markdown(f"""
@@ -134,7 +148,7 @@ with st.container():
             else:
                 st.info("🌤️ Tidak ada hujan yang diperkirakan.")
 
-            # GRAFIK SUHU-HUJAN-AWAN
+            # Grafik Suhu, Hujan, Awan
             st.subheader("📈 Grafik Suhu, Hujan & Awan")
             st.caption(f"Prakiraan untuk {tanggal_str} (waktu lokal) — Lokasi: {lokasi_tampil}")
             fig = go.Figure()
@@ -149,7 +163,7 @@ with st.container():
             )
             st.plotly_chart(fig, use_container_width=True)
 
-            # ARAH ANGIN
+            # Grafik Angin
             st.subheader("🧭 Arah & Kecepatan Angin")
             st.caption(f"Prakiraan untuk {tanggal_str} (waktu lokal) — Lokasi: {lokasi_tampil}")
             fig_angin = go.Figure()
@@ -166,7 +180,7 @@ with st.container():
             )
             st.plotly_chart(fig_angin, use_container_width=True)
 
-            # TABEL DATA
+            # Tabel Data
             df = pd.DataFrame({
                 "Waktu": waktu,
                 "Suhu (°C)": suhu,
