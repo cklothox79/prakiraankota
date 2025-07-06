@@ -11,6 +11,19 @@ st.title("🕓 CUACA PERJALANAN")
 st.markdown("**Editor: Ferri Kusuma (STMKG/M8TB_14.22.0003_2025)**")
 st.write("Lihat prakiraan suhu, hujan, awan, kelembapan, dan angin setiap jam untuk lokasi dan tanggal yang kamu pilih.")
 
+# Mode tema
+mode = st.radio("🌗 Pilih Mode Tampilan:", ["Siang", "Malam"], horizontal=True)
+dark = mode == "Malam"
+tema = {
+    "box": "#ffffff" if not dark else "#1e1e1e",
+    "teks": "#111111" if not dark else "#dddddd",
+    "ekstrem_bg": "#fff3f3" if not dark else "#330000",
+    "ekstrem_teks": "#b30000" if not dark else "#ff6666",
+    "hujan_bg": "#e6f3ff" if not dark else "#002b45",
+    "hujan_teks": "#003355" if not dark else "#aad4ff",
+    "border": "#666666" if not dark else "#cccccc"
+}
+
 tanggal = st.date_input("📅 Pilih tanggal perjalanan:", value=date.today(), min_value=date.today())
 kota = st.text_input("📝 Masukkan nama kota (opsional):")
 
@@ -99,8 +112,8 @@ with st.container():
 
             with col2:
                 st.markdown(f"""
-                <div style='border:2px solid #666; border-radius:10px; padding:15px; background-color:#eef2f7;'>
-                    <h4>📆 Cuaca untuk {tanggal_str} <span style="font-size:12px;">(waktu lokal)</span></h4>
+                <div style='border:2px solid {tema['border']}; border-radius:10px; padding:15px; background-color:{tema['box']}; color:{tema['teks']}; font-weight:bold;'>
+                    <h4>📆 Cuaca untuk {tanggal_str} <span style="font-size:12px; font-weight:normal;">(waktu lokal)</span></h4>
                     <p><b>Lokasi:</b> {lokasi_tampil}</p>
                     <p><b>{ikon} {deskripsi}</b></p>
                     <p><b>🌡️ Suhu:</b> {suhu[idx_12]} °C</p>
@@ -110,19 +123,17 @@ with st.container():
                 </div>
                 """, unsafe_allow_html=True)
 
-            # Cuaca ekstrem
             ekstrem = [w.replace("T", " ") for i, w in enumerate(waktu) if kode[i] >= 80]
             if ekstrem:
                 daftar = "<br>".join(f"• {e}" for e in ekstrem)
                 st.markdown(f"""
-                    <div style='border:2px solid red; padding:15px; border-radius:10px; background-color:#ffe6e6; margin-top:10px;'>
+                    <div style='border:2px solid {tema['ekstrem_teks']}; padding:15px; border-radius:10px; background-color:{tema['ekstrem_bg']}; color:{tema['ekstrem_teks']}; margin-top:10px;'>
                         <b>🚨 Cuaca ekstrem diperkirakan (waktu lokal):</b><br>{daftar}
                     </div>
                 """, unsafe_allow_html=True)
             else:
                 st.success("✅ Tidak ada cuaca ekstrem terdeteksi.")
 
-            # Prakiraan Hujan + Kategori
             def intensitas_hujan(mm):
                 if 0.1 <= mm <= 2.5:
                     return "Ringan"
@@ -141,62 +152,9 @@ with st.container():
             if hujan_info:
                 daftar_hujan = "<br>".join(hujan_info)
                 st.markdown(f"""
-                    <div style='border:2px solid #0077b6; padding:15px; border-radius:10px; background-color:#e0f2ff; margin-top:10px;'>
+                    <div style='border:2px solid #0077b6; padding:15px; border-radius:10px; background-color:{tema['hujan_bg']}; color:{tema['hujan_teks']}; margin-top:10px;'>
                         <b>🌧️ Prakiraan Hujan (waktu lokal):</b><br>{daftar_hujan}
                     </div>
                 """, unsafe_allow_html=True)
             else:
                 st.info("🌤️ Tidak ada hujan yang diperkirakan.")
-
-            # Grafik Suhu, Hujan, Awan
-            st.subheader("📈 Grafik Suhu, Hujan & Awan")
-            st.caption(f"Prakiraan untuk {tanggal_str} (waktu lokal) — Lokasi: {lokasi_tampil}")
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=jam_labels, y=suhu, name="Suhu (°C)", line=dict(color="red")))
-            fig.add_trace(go.Bar(x=jam_labels, y=hujan, name="Hujan (mm)", yaxis="y2", marker_color="darkblue", opacity=0.6))
-            fig.add_trace(go.Bar(x=jam_labels, y=awan, name="Awan (%)", yaxis="y2", marker_color="gray", opacity=0.4))
-            fig.update_layout(
-                xaxis=dict(title="Jam"),
-                yaxis=dict(title="Suhu (°C)"),
-                yaxis2=dict(title="Hujan / Awan", overlaying="y", side="right"),
-                height=500
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-            # Grafik Angin
-            st.subheader("🧭 Arah & Kecepatan Angin")
-            st.caption(f"Prakiraan untuk {tanggal_str} (waktu lokal) — Lokasi: {lokasi_tampil}")
-            fig_angin = go.Figure()
-            fig_angin.add_trace(go.Barpolar(
-                r=angin_speed,
-                theta=angin_dir,
-                width=[10]*len(angin_speed),
-                marker_color="royalblue",
-                opacity=0.7
-            ))
-            fig_angin.update_layout(
-                polar=dict(angularaxis=dict(direction="clockwise", rotation=90), radialaxis=dict(title="m/s")),
-                height=450
-            )
-            st.plotly_chart(fig_angin, use_container_width=True)
-
-            # Tabel Data
-            df = pd.DataFrame({
-                "Waktu": waktu,
-                "Suhu (°C)": suhu,
-                "Hujan (mm)": hujan,
-                "Awan (%)": awan,
-                "RH (%)": rh,
-                "Kecepatan Angin (m/s)": angin_speed,
-                "Arah Angin (°)": angin_dir,
-                "Tekanan (hPa)": tekanan,
-                "Kode Cuaca": kode
-            })
-            st.markdown("### 📊 Tabel Data Cuaca")
-            st.caption(f"Prakiraan untuk {tanggal_str} (waktu lokal) — Lokasi: {lokasi_tampil}")
-            st.dataframe(df, use_container_width=True)
-            csv = df.to_csv(index=False).encode("utf-8")
-            st.download_button("📥 Unduh Data (CSV)", data=csv, file_name="cuaca_per_jam.csv", mime="text/csv")
-
-        else:
-            st.error("❌ Data cuaca tidak tersedia.")
