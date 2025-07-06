@@ -57,7 +57,7 @@ with st.container():
             f"https://api.open-meteo.com/v1/forecast?"
             f"latitude={lat}&longitude={lon}"
             f"&hourly=temperature_2m,precipitation,cloudcover,weathercode,"
-            f"relativehumidity_2m,windspeed_10m,winddirection_10m,pressure_msl"
+            f"relativehumidity_2m,windspeed_10m,winddirection_10m,pressure_msl,shortwave_radiation"
             f"&current_weather=true"
             f"&timezone=auto&start_date={tgl_str}&end_date={tgl_str}"
         )
@@ -87,6 +87,7 @@ with st.container():
             angin_speed = d["windspeed_10m"]
             angin_dir = d["winddirection_10m"]
             tekanan = d["pressure_msl"]
+            shortwave = d.get("shortwave_radiation", [0]*len(waktu))
 
             try:
                 idx_12 = jam_labels.index("12:00")
@@ -107,96 +108,23 @@ with st.container():
                     <p><b>💧 Kelembapan:</b> {rh[idx_12]} %</p>
                     <p><b>💨 Angin:</b> {angin_speed[idx_12]} m/s ({angin_dir[idx_12]}°)</p>
                     <p><b>📉 Tekanan:</b> {tekanan[idx_12]} hPa</p>
+                    <p><b>🔆 Radiasi Matahari:</b> {shortwave[idx_12]:.1f} W/m²</p>
                 </div>
                 """, unsafe_allow_html=True)
 
-            # Cuaca ekstrem
-            ekstrem = [w.replace("T", " ") for i, w in enumerate(waktu) if kode[i] >= 80]
-            if ekstrem:
-                daftar = "<br>".join(f"• {e}" for e in ekstrem)
+            # Penyinaran Matahari
+            st.subheader("🔆 Durasi & Intensitas Penyinaran Matahari")
+            penyinaran_df = pd.DataFrame({"Waktu": jam_labels, "Radiasi (W/m²)": shortwave})
+            sinar_positif = penyinaran_df[penyinaran_df["Radiasi (W/m²)"] > 0]
+            if not sinar_positif.empty:
+                jam_awal = sinar_positif.iloc[0]["Waktu"]
+                jam_akhir = sinar_positif.iloc[-1]["Waktu"]
+                durasi = len(sinar_positif)
+                rata2_radiasi = sinar_positif["Radiasi (W/m²)"].mean()
                 st.markdown(f"""
-                    <div style='border:2px solid red; padding:15px; border-radius:10px; background-color:#ffe6e6; margin-top:10px;'>
-                        <b>🚨 Cuaca ekstrem diperkirakan (waktu lokal):</b><br>{daftar}
-                    </div>
-                """, unsafe_allow_html=True)
+                ☀️ **Durasi Penyinaran Matahari:** {durasi} jam (dari jam {jam_awal} sampai {jam_akhir})  
+                🔅 **Rata-rata Intensitas:** {rata2_radiasi:.1f} W/m²
+                """)
+                st.line_chart(penyinaran_df.set_index("Waktu"))
             else:
-                st.success("✅ Tidak ada cuaca ekstrem terdeteksi.")
-
-            # Prakiraan Hujan + Kategori
-            def intensitas_hujan(mm):
-                if 0.1 <= mm <= 2.5:
-                    return "Ringan"
-                elif 2.6 <= mm <= 7.5:
-                    return "Sedang"
-                elif mm > 7.5:
-                    return "Lebat"
-                return ""
-
-            hujan_info = [
-                f"• {w[-5:]} — {h:.1f} mm ({intensitas_hujan(h)})"
-                for w, h in zip(waktu, hujan)
-                if h > 0
-            ]
-
-            if hujan_info:
-                daftar_hujan = "<br>".join(hujan_info)
-                st.markdown(f"""
-                    <div style='border:2px solid #0077b6; padding:15px; border-radius:10px; background-color:#e0f2ff; margin-top:10px;'>
-                        <b>🌧️ Prakiraan Hujan (waktu lokal):</b><br>{daftar_hujan}
-                    </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.info("🌤️ Tidak ada hujan yang diperkirakan.")
-
-            # Grafik Suhu, Hujan, Awan
-            st.subheader("📈 Grafik Suhu, Hujan & Awan")
-            st.caption(f"Prakiraan untuk {tanggal_str} (waktu lokal) — Lokasi: {lokasi_tampil}")
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=jam_labels, y=suhu, name="Suhu (°C)", line=dict(color="red")))
-            fig.add_trace(go.Bar(x=jam_labels, y=hujan, name="Hujan (mm)", yaxis="y2", marker_color="darkblue", opacity=0.6))
-            fig.add_trace(go.Bar(x=jam_labels, y=awan, name="Awan (%)", yaxis="y2", marker_color="gray", opacity=0.4))
-            fig.update_layout(
-                xaxis=dict(title="Jam"),
-                yaxis=dict(title="Suhu (°C)"),
-                yaxis2=dict(title="Hujan / Awan", overlaying="y", side="right"),
-                height=500
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-            # Grafik Angin
-            st.subheader("🧭 Arah & Kecepatan Angin")
-            st.caption(f"Prakiraan untuk {tanggal_str} (waktu lokal) — Lokasi: {lokasi_tampil}")
-            fig_angin = go.Figure()
-            fig_angin.add_trace(go.Barpolar(
-                r=angin_speed,
-                theta=angin_dir,
-                width=[10]*len(angin_speed),
-                marker_color="royalblue",
-                opacity=0.7
-            ))
-            fig_angin.update_layout(
-                polar=dict(angularaxis=dict(direction="clockwise", rotation=90), radialaxis=dict(title="m/s")),
-                height=450
-            )
-            st.plotly_chart(fig_angin, use_container_width=True)
-
-            # Tabel Data
-            df = pd.DataFrame({
-                "Waktu": waktu,
-                "Suhu (°C)": suhu,
-                "Hujan (mm)": hujan,
-                "Awan (%)": awan,
-                "RH (%)": rh,
-                "Kecepatan Angin (m/s)": angin_speed,
-                "Arah Angin (°)": angin_dir,
-                "Tekanan (hPa)": tekanan,
-                "Kode Cuaca": kode
-            })
-            st.markdown("### 📊 Tabel Data Cuaca")
-            st.caption(f"Prakiraan untuk {tanggal_str} (waktu lokal) — Lokasi: {lokasi_tampil}")
-            st.dataframe(df, use_container_width=True)
-            csv = df.to_csv(index=False).encode("utf-8")
-            st.download_button("📥 Unduh Data (CSV)", data=csv, file_name="cuaca_per_jam.csv", mime="text/csv")
-
-        else:
-            st.error("❌ Data cuaca tidak tersedia.")
+                st.info("🌙 Tidak ada penyinaran matahari terdeteksi pada hari ini.")
