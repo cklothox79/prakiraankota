@@ -7,7 +7,9 @@ import folium
 import plotly.graph_objects as go
 
 st.set_page_config(page_title="Cuaca Perjalanan", layout="wide")
+
 st.title("🕓 Cuaca Perjalanan Per Jam")
+st.markdown("**Editor: Ferri Kusuma (M8TB_14.22.0003)**")
 st.write("Lihat prakiraan suhu, hujan, awan, kelembapan, dan angin setiap jam untuk lokasi dan tanggal yang kamu pilih.")
 
 # Input tanggal
@@ -171,7 +173,7 @@ with st.container():
                 y=hujan,
                 name="Hujan (mm)",
                 yaxis="y2",
-                marker_color="darkblue",  # ← Warna biru tua
+                marker_color="darkblue",
                 opacity=0.6
             ))
             fig.add_trace(go.Bar(
