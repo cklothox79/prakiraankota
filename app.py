@@ -110,19 +110,28 @@ with st.container():
                 </div>
                 """, unsafe_allow_html=True)
 
-            # Cuaca ekstrem
+            # Cuaca ekstrem (versi mobile-friendly)
             ekstrem = [w.replace("T", " ") for i, w in enumerate(waktu) if kode[i] >= 80]
             if ekstrem:
                 daftar = "<br>".join(f"• {e}" for e in ekstrem)
                 st.markdown(f"""
-                    <div style='border:2px solid red; padding:15px; border-radius:10px; background-color:#ffe6e6; margin-top:10px;'>
-                        <b>🚨 Cuaca ekstrem diperkirakan (waktu lokal):</b><br>{daftar}
+                    <div style='
+                        border: 2px solid #b30000;
+                        padding: 15px;
+                        border-radius: 10px;
+                        background-color: #fff3f3;
+                        color: #b30000;
+                        font-weight: bold;
+                        font-size: 16px;
+                        line-height: 1.6;
+                        margin-top: 10px;
+                    '>
+                        ⚠️ <u>Cuaca ekstrem diperkirakan</u> (waktu lokal):<br>{daftar}
                     </div>
                 """, unsafe_allow_html=True)
             else:
                 st.success("✅ Tidak ada cuaca ekstrem terdeteksi.")
 
-            # Prakiraan Hujan + Kategori
             def intensitas_hujan(mm):
                 if 0.1 <= mm <= 2.5:
                     return "Ringan"
