@@ -30,7 +30,7 @@ def get_coordinates(nama_kota):
 lat = lon = None
 lokasi_sumber = ""
 
-# Jika pengguna klik peta
+# Tampilkan peta
 st.markdown("### 🗺️ Klik lokasi di peta atau masukkan nama kota")
 default_location = [-2.5, 117.0]
 m = folium.Map(location=default_location, zoom_start=5)
@@ -44,14 +44,13 @@ if kota:
         m.location = [lat, lon]
         m.zoom_start = 9
 
-# Tampilkan peta dan ambil klik
 m.add_child(folium.LatLngPopup())
+
 with st.container():
     col1, col2 = st.columns([2, 1])
     with col1:
         map_data = st_folium(m, height=400, width=700)
 
-    # Jika pengguna klik di peta
     if map_data and map_data["last_clicked"]:
         lat = map_data["last_clicked"]["lat"]
         lon = map_data["last_clicked"]["lng"]
@@ -72,7 +71,7 @@ with st.container():
         r = requests.get(url)
         return r.json() if r.status_code == 200 else None
 
-    # Mapping kode cuaca ke ikon dan deskripsi
+    # Ikon dan deskripsi cuaca
     weather_icon = {
         0: ("☀️", "Cerah"),
         1: ("🌤️", "Cerah Berawan"),
@@ -95,8 +94,8 @@ with st.container():
         81: ("🌧️", "Hujan Singkat Sedang"),
         82: ("🌧️", "Hujan Singkat Lebat"),
         95: ("⛈️", "Badai Petir"),
-        96: ("⛈️", "Badai Petir + Es"),
-        99: ("⛈️", "Badai Petir Parah")
+        96: ("⛈️", "Petir + Es"),
+        99: ("⛈️", "Badai Parah")
     }
 
     if lat and lon and tanggal:
@@ -114,10 +113,19 @@ with st.container():
             angin_dir = d["winddirection_10m"]
             tekanan = d.get("pressure_msl", [None]*len(waktu))
 
-            # Data saat ini
+            # Cuaca sekarang
             cuaca_skrg = data.get("current_weather", {})
-            idx_now = jam_labels.index(cuaca_skrg["time"][-5:]) if "time" in cuaca_skrg else 0
-            kode_skrg = kode[idx_now] if kode else 0
+            if "time" in cuaca_skrg:
+                try:
+                    dt = datetime.fromisoformat(cuaca_skrg["time"])
+                    jam_sekarang = dt.strftime("%H:00")
+                    idx_now = jam_labels.index(jam_sekarang) if jam_sekarang in jam_labels else 0
+                except:
+                    idx_now = 0
+            else:
+                idx_now = 0
+
+            kode_skrg = kode[idx_now] if idx_now < len(kode) else 0
             ikon, deskripsi = weather_icon.get(kode_skrg, ("❓", "Tidak diketahui"))
 
             with col2:
@@ -138,7 +146,7 @@ with st.container():
                 else:
                     st.success("✅ Tidak ada cuaca ekstrem terdeteksi.")
 
-            # Tabel untuk grafik & unduhan
+            # DataFrame dan grafik
             df = pd.DataFrame({
                 "Waktu": waktu,
                 "Suhu (°C)": suhu,
@@ -151,7 +159,6 @@ with st.container():
                 "Kode Cuaca": kode
             })
 
-            # Grafik suhu, hujan, awan
             st.subheader("📈 Grafik Suhu, Hujan & Awan")
             fig = go.Figure()
             fig.add_trace(go.Scatter(x=jam_labels, y=suhu, name="Suhu (°C)", line=dict(color="red")))
@@ -169,7 +176,6 @@ with st.container():
             )
             st.plotly_chart(fig, use_container_width=True)
 
-            # Arah dan kecepatan angin
             st.subheader("🧭 Arah & Kecepatan Angin")
             fig_angin = go.Figure()
             fig_angin.add_trace(go.Barpolar(
@@ -188,7 +194,7 @@ with st.container():
             )
             st.plotly_chart(fig_angin, use_container_width=True)
 
-            # Tabel & unduh
+            # Tabel & unduhan
             st.markdown("### 📊 Tabel Data Cuaca")
             st.dataframe(df, use_container_width=True)
             csv = df.to_csv(index=False).encode("utf-8")
