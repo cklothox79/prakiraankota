@@ -100,7 +100,7 @@ with st.container():
             with col2:
                 st.markdown(f"""
                 <div style='border:2px solid #666; border-radius:10px; padding:15px; background-color:#eef2f7;'>
-                    <h4>📆 Cuaca untuk {tanggal_str}</h4>
+                    <h4>📆 Cuaca untuk {tanggal_str} <span style="font-size:12px;">(waktu lokal)</span></h4>
                     <p><b>Lokasi:</b> {lokasi_tampil}</p>
                     <p><b>{ikon} {deskripsi}</b></p>
                     <p><b>🌡️ Suhu:</b> {suhu[idx_12]} °C</p>
@@ -115,15 +115,15 @@ with st.container():
                 daftar = "<br>".join(f"• {e}" for e in ekstrem)
                 st.markdown(f"""
                     <div style='border:2px solid red; padding:15px; border-radius:10px; background-color:#ffe6e6; margin-top:10px;'>
-                        <b>🚨 Cuaca ekstrem diperkirakan:</b><br>{daftar}
+                        <b>🚨 Cuaca ekstrem diperkirakan (waktu lokal):</b><br>{daftar}
                     </div>
                 """, unsafe_allow_html=True)
             else:
                 st.success("✅ Tidak ada cuaca ekstrem terdeteksi.")
 
-            # ========== GRAFIK ==========
+            # GRAFIK SUHU-HUJAN-AWAN
             st.subheader("📈 Grafik Suhu, Hujan & Awan")
-            st.caption(f"Prakiraan untuk {tanggal_str} — Lokasi: {lokasi_tampil}")
+            st.caption(f"Prakiraan untuk {tanggal_str} (waktu lokal) — Lokasi: {lokasi_tampil}")
             fig = go.Figure()
             fig.add_trace(go.Scatter(x=jam_labels, y=suhu, name="Suhu (°C)", line=dict(color="red")))
             fig.add_trace(go.Bar(x=jam_labels, y=hujan, name="Hujan (mm)", yaxis="y2", marker_color="darkblue", opacity=0.6))
@@ -136,9 +136,9 @@ with st.container():
             )
             st.plotly_chart(fig, use_container_width=True)
 
-            # ========== ANGIN ==========
+            # ARAH ANGIN
             st.subheader("🧭 Arah & Kecepatan Angin")
-            st.caption(f"Prakiraan untuk {tanggal_str} — Lokasi: {lokasi_tampil}")
+            st.caption(f"Prakiraan untuk {tanggal_str} (waktu lokal) — Lokasi: {lokasi_tampil}")
             fig_angin = go.Figure()
             fig_angin.add_trace(go.Barpolar(
                 r=angin_speed,
@@ -153,7 +153,7 @@ with st.container():
             )
             st.plotly_chart(fig_angin, use_container_width=True)
 
-            # ========== TABEL ==========
+            # TABEL DATA
             df = pd.DataFrame({
                 "Waktu": waktu,
                 "Suhu (°C)": suhu,
@@ -166,7 +166,7 @@ with st.container():
                 "Kode Cuaca": kode
             })
             st.markdown("### 📊 Tabel Data Cuaca")
-            st.caption(f"Prakiraan untuk {tanggal_str} — Lokasi: {lokasi_tampil}")
+            st.caption(f"Prakiraan untuk {tanggal_str} (waktu lokal) — Lokasi: {lokasi_tampil}")
             st.dataframe(df, use_container_width=True)
             csv = df.to_csv(index=False).encode("utf-8")
             st.download_button("📥 Unduh Data (CSV)", data=csv, file_name="cuaca_per_jam.csv", mime="text/csv")
