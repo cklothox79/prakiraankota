@@ -6,8 +6,8 @@ from streamlit_folium import st_folium
 import folium
 import plotly.graph_objects as go
 
-st.set_page_config(page_title="Cuaca Perjalanan", layout="wide")
-st.title("🕓 Cuaca Perjalanan")
+st.set_page_config(page_title="CUACA PERJALANAN", layout="wide")
+st.title("🕓 CUACA PERJALANAN")
 st.markdown("**Editor: Ferri Kusuma (STMKG/M8TB_14.22.0003_2025)**")
 st.write("Lihat prakiraan suhu, hujan, awan, kelembapan, dan angin setiap jam untuk lokasi dan tanggal yang kamu pilih.")
 
